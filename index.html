@@ -160,7 +160,7 @@ input[type=file]{display:none}
           
           page.drawText(last5, {
             x: Math.max(2, (width - 120) / 2),
-            y: 2,
+            y: 0.5,
             size: 18,
             font: await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold),
             color: PDFLib.rgb(0,0,0)
@@ -169,12 +169,12 @@ input[type=file]{display:none}
           // Place code at the very bottom of the print canvas
           ctx.save();
           ctx.fillStyle = '#fff';
-          ctx.fillRect(canvas.width * 0.35, canvas.height - 28, canvas.width * 0.3, 28);
+          ctx.fillRect(canvas.width * 0.35, canvas.height - 18, canvas.width * 0.3, 18);
           ctx.fillStyle = '#000';
           ctx.font = 'bold 36px Arial, sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'alphabetic';
-          ctx.fillText(last5, canvas.width / 2, canvas.height - 3);
+          ctx.fillText(last5, canvas.width / 2, canvas.height - 1);
           ctx.restore();
 
           matched++;
