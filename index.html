@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -5,116 +6,415 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Shipping Label Code Printer</title>
 <style>
-:root{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#17202a;background:#f4f6f8}
-body{margin:0;padding:24px 14px}main{max-width:900px;margin:auto;background:#fff;border:1px solid #dce2e8;border-radius:16px;padding:22px;box-shadow:0 8px 28px #17202a0b}
-h1{font-size:1.45rem;margin:0 0 8px}p{line-height:1.5;color:#46515c}
-#drop{border:2px dashed #9aa8b5;border-radius:14px;padding:32px 14px;text-align:center;background:#fafbfd;cursor:pointer}
-#drop.drag{border-color:#18794e;background:#effaf4}
-button,.filebtn{background:#1769aa;color:white;border:0;border-radius:9px;padding:11px 15px;font-size:1rem;cursor:pointer}
-button:disabled{opacity:.45;cursor:not-allowed}.controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-input[type=file]{display:none}#status{margin-top:16px;padding:12px;border-radius:9px;background:#f0f3f6;white-space:pre-wrap;overflow-wrap:anywhere}
-#preview{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}
-.thumb{border:1px solid #dce2e8;border-radius:8px;padding:8px;font-size:12px;color:#46515c;overflow-wrap:anywhere}
-.thumb canvas{width:100%;height:auto;display:block;border:1px solid #e3e6e9;margin-bottom:6px}
-.note{font-size:.9rem}.checks{display:flex;gap:8px;align-items:center;margin-top:12px;color:#46515c}
-@media print{body{padding:0;background:white}main{display:none!important}#printArea{display:block!important}.printpage{break-after:page;page-break-after:always;margin:0;padding:0;position:relative;overflow:hidden}.printpage:last-child{break-after:auto;page-break-after:auto}.printpage canvas{display:block;width:100%;height:100%;object-fit:contain}@page{margin:0}}
-#printArea{display:none}
+:root {
+  font-family: system-ui, sans-serif;
+  color: #17202a;
+  background: #f4f6f8;
+}
+body { margin: 0; padding: 24px 14px; }
+main {
+  max-width: 900px; margin: auto; background: white;
+  border: 1px solid #dce2e8; border-radius: 16px; padding: 22px;
+}
+h1 { font-size: 1.45rem; }
+p { line-height: 1.5; color: #46515c; }
+#drop {
+  border: 2px dashed #9aa8b5; border-radius: 14px;
+  padding: 32px 14px; text-align: center;
+  background: #fafbfd; cursor: pointer;
+}
+#drop.drag { border-color: #18794e; background: #effaf4; }
+button {
+  background: #1769aa; color: white; border: 0;
+  border-radius: 9px; padding: 11px 15px;
+  font-size: 1rem; cursor: pointer;
+}
+button:disabled { opacity: .45; cursor: not-allowed; }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+input[type=file] { display: none; }
+#status {
+  margin-top: 16px; padding: 12px; border-radius: 9px;
+  background: #f0f3f6; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+#preview {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+}
+.thumb {
+  border: 1px solid #dce2e8; border-radius: 8px;
+  padding: 8px; font-size: 12px; overflow-wrap: anywhere;
+}
+.thumb canvas { width: 100%; height: auto; display: block; }
+.note { font-size: .9rem; }
+.checks { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+#printArea { display: none; }
+
+@media print {
+  body { padding: 0; background: white; }
+  main { display: none !important; }
+  #printArea { display: block !important; }
+  .printpage {
+    break-after: page; page-break-after: always;
+    margin: 0; padding: 0; overflow: hidden;
+  }
+  .printpage:last-child { break-after: auto; page-break-after: auto; }
+  .printpage canvas {
+    display: block; width: 100%; height: 100%; object-fit: contain;
+  }
+  @page { margin: 0; }
+}
 </style>
 </head>
 <body>
 <main>
-<h1>Shipping Label Code Printer</h1>
-<p>Select or drop one or more marketplace shipping-label PDFs. This tool adds the final five characters of the order identifier to each recognized label page.</p>
-<div id="drop" tabindex="0" role="button" aria-label="Choose or drop PDF files"><strong>Drop PDF files here</strong><br><span>or click to choose multiple files</span><input id="file" type="file" accept="application/pdf,.pdf" multiple></div>
-<div class="checks"><input id="autoPrint" type="checkbox" checked><label for="autoPrint">Open print dialog automatically when processing finishes</label></div>
-<div class="controls"><button id="process">Process selected PDFs</button><button id="print" disabled>Print processed labels</button><button id="download" disabled>Download combined PDF</button></div>
-<div id="status">Ready. Choose one or more PDFs to begin.</div>
-<p class="note">Privacy: PDF files are processed in this browser tab and are not uploaded. PDF.js and pdf-lib load from public CDNs, so internet access is required.</p>
-<p class="note">Check the report and previews before printing. If an identifier cannot be recognized, that page is left without an added code and is flagged.</p>
-<div id="preview"></div>
+  <h1>Shipping Label Code Printer</h1>
+  <p>Drop shipping-label PDFs here. The tool adds the last five characters of the marketplace order identifier to each recognized page.</p>
+
+  <div id="drop" tabindex="0" role="button">
+    <strong>Drop PDF files here</strong><br>
+    <span>or click to select multiple PDFs</span>
+    <input id="file" type="file" accept="application/pdf,.pdf" multiple>
+  </div>
+
+  <div class="checks">
+    <input id="autoPrint" type="checkbox" checked>
+    <label for="autoPrint">Open print dialog automatically when finished</label>
+  </div>
+
+  <div class="controls">
+    <button id="process">Process PDFs</button>
+    <button id="print" disabled>Print labels</button>
+    <button id="download" disabled>Download combined PDF</button>
+  </div>
+
+  <div id="status">Ready. Select one or more PDFs.</div>
+  <p class="note">PDFs are processed locally in your browser and are not uploaded. Internet access is required to load the PDF libraries.</p>
+  <p class="note">Check the report before printing. Pages without a recognized order ID are flagged.</p>
+  <div id="preview"></div>
 </main>
+
 <div id="printArea"></div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+
 <script>
 (() => {
- const $=id=>document.getElementById(id), input=$('file'), drop=$('drop'), status=$('status'), preview=$('preview'), printArea=$('printArea');
- let resultBytes=null, printReady=false;
- if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
- drop.addEventListener('click',()=>input.click());
- drop.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')input.click()});
- ['dragenter','dragover'].forEach(n=>drop.addEventListener(n,e=>{e.preventDefault();drop.classList.add('drag')}));
- ['dragleave','drop'].forEach(n=>drop.addEventListener(n,e=>{e.preventDefault();drop.classList.remove('drag')}));
- drop.addEventListener('drop',e=>{const fs=[...(e.dataTransfer.files||[])].filter(f=>f.name.toLowerCase().endsWith('.pdf'));if(fs.length){input.files=e.dataTransfer.files;status.textContent=`Selected ${fs.length} PDF file(s). Click Process selected PDFs.`}});
- $('process').addEventListener('click',processFiles);
- $('print').addEventListener('click',()=>{if(printReady)window.print()});
- $('download').addEventListener('click',()=>{
-   if(!resultBytes)return;
-   const url=URL.createObjectURL(new Blob([resultBytes],{type:'application/pdf'}));
-   const a=document.createElement('a');a.href=url;a.download='shipping-labels-with-order-codes.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
- });
- function clean(s){return (s||'').replace(/[^A-Z0-9]/gi,'')}
- function extractIdentifier(text){
-   const flat=text.replace(/\s+/g,' ').trim();
-   // Explicit order fields take precedence over tracking / waybill numbers.
-   let m=flat.match(/No\.?\s*Pesanan\s*[:：]?\s*([A-Z0-9]{8,})/i);
-   if(m)return {value:clean(m[1]),kind:'No. Pesanan'};
-   m=flat.match(/Order\s*ID\s*[:：]?\s*([0-9]{12,})/i);
-   if(m)return {value:clean(m[1]),kind:'Order ID'};
-   // Lazada labels in the supplied sample have a 16-digit number near the lower barcode.
-   // Use this fallback only when the page looks like a Lazada/LEX label.
-   if(/lazada|LEXAD|LEX\b/i.test(flat)){
-     m=flat.match(/\b([0-9]{16})\b/);
-     if(m)return {value:m[1],kind:'Lazada 16-digit order number'};
-   }
-   return null;
- }
- async function processFiles(){
-   const files=[...input.files].filter(f=>f.type==='application/pdf'||f.name.toLowerCase().endsWith('.pdf'));
-   if(!files.length){status.textContent='Choose at least one PDF file first.';return}
-   if(!window.pdfjsLib||!window.PDFLib){status.textContent='Could not load PDF libraries. Check your internet connection and reload.';return}
-   $('process').disabled=true;$('print').disabled=true;$('download').disabled=true;preview.innerHTML='';printArea.innerHTML='';resultBytes=null;printReady=false;
-   const combined=await PDFLib.PDFDocument.create();let matched=0,total=0,unmatched=0;const report=[];const printCanvases=[];
-   try{
-     const bold=await combined.embedFont(PDFLib.StandardFonts.HelveticaBold);
-     for(const file of files){
-       status.textContent=`Opening ${file.name}…`;
-       const bytes=new Uint8Array(await file.arrayBuffer());
-       const src=await PDFLib.PDFDocument.load(bytes);
-       const srcPages=src.getPages();
-       const jsdoc=await pdfjsLib.getDocument({data:bytes.slice()}).promise;
-       const copied=await combined.copyPages(src,srcPages.map((_,i)=>i));
-       for(let i=0;i<jsdoc.numPages;i++){
-         total++;status.textContent=`Processing ${file.name}: page ${i+1}/${jsdoc.numPages} (${total} total)…`;
-         const jp=await jsdoc.getPage(i+1), tc=await jp.getTextContent();
-         const text=tc.items.map(x=>x.str||'').join(' ');
-         const found=extractIdentifier(text), outPage=copied[i],{width,height}=outPage.getSize();
-         const vp=jp.getViewport({scale:2}), canvas=document.createElement('canvas');
-         canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);
-         const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
-         await jp.render({canvasContext:ctx,viewport:vp}).promise;
-         let code='';
-         if(found&&found.value.length>=5){
-           code=found.value.slice(-5);
-           outPage.drawText(code,{x:Math.max(8,(width-120)/2),y:12,size:24,font:bold,color:PDFLib.rgb(0,0,0)});
-           ctx.save();ctx.fillStyle='#fff';ctx.fillRect(canvas.width*.25,canvas.height-62,canvas.width*.5,54);
-           ctx.fillStyle='#000';ctx.font='bold 48px Arial,sans-serif';ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.fillText(code,canvas.width/2,canvas.height-20);ctx.restore();
-           matched++;report.push(`OK — ${file.name}, page ${i+1}: ${found.kind} → ${code}`);
-         }else{unmatched++;report.push(`CHECK — ${file.name}, page ${i+1}: no supported order identifier found`)}
-         const thumb=document.createElement('div');thumb.className='thumb';const small=document.createElement('canvas');
-         small.width=170;small.height=Math.round(170*canvas.height/canvas.width);small.getContext('2d').drawImage(canvas,0,0,small.width,small.height);
-         thumb.appendChild(small);const lab=document.createElement('div');lab.textContent=`${file.name} · page ${i+1}: ${code||'CHECK ID'}`;thumb.appendChild(lab);preview.appendChild(thumb);
-         const pp=document.createElement('div');pp.className='printpage';pp.style.width='100vw';pp.style.height=`calc(100vw * ${height/width})`;
-         const pc=document.createElement('canvas');pc.width=canvas.width;pc.height=canvas.height;pc.getContext('2d').drawImage(canvas,0,0);pp.appendChild(pc);printArea.appendChild(pp);
-       }
-       await jsdoc.destroy();
-     }
-     resultBytes=await combined.save();printReady=true;$('print').disabled=false;$('download').disabled=false;
-     status.textContent=`Finished: ${files.length} PDF(s), ${total} pages, ${matched} codes added, ${unmatched} page(s) need checking.\n\n${report.join('\n')}\n\nReview the previews and report. Downloaded PDF preserves vector content; the direct print preview uses rendered page images.`;
-     if($('autoPrint').checked)setTimeout(()=>{if(printReady)window.print()},500);
-   }catch(err){console.error(err);status.textContent='Processing failed: '+(err?.message||String(err))+'\nTry a non-password-protected PDF and confirm internet access.'}
-   finally{$('process').disabled=false}
- }
+  const $ = id => document.getElementById(id);
+  const input = $('file');
+  const drop = $('drop');
+  const status = $('status');
+  const preview = $('preview');
+  const printArea = $('printArea');
+
+  let resultBytes = null;
+  let printReady = false;
+
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
+  drop.addEventListener('click', () => input.click());
+
+  drop.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') input.click();
+  });
+
+  ['dragenter', 'dragover'].forEach(name => {
+    drop.addEventListener(name, e => {
+      e.preventDefault();
+      drop.classList.add('drag');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(name => {
+    drop.addEventListener(name, e => {
+      e.preventDefault();
+      drop.classList.remove('drag');
+    });
+  });
+
+  drop.addEventListener('drop', e => {
+    const files = [...e.dataTransfer.files].filter(
+      f => f.name.toLowerCase().endsWith('.pdf')
+    );
+
+    if (files.length) {
+      // Keep dropped files separately instead of assigning to input.files.
+      selectedFiles = files;
+      status.textContent =
+        `Selected ${files.length} PDF file(s). Click Process PDFs.`;
+    }
+  });
+
+  let selectedFiles = [];
+
+  input.addEventListener('change', () => {
+    selectedFiles = [...input.files];
+    status.textContent = selectedFiles.length
+      ? `Selected ${selectedFiles.length} PDF file(s).`
+      : 'Ready. Select one or more PDFs.';
+  });
+
+  $('process').addEventListener('click', processFiles);
+
+  $('print').addEventListener('click', () => {
+    if (printReady) window.print();
+  });
+
+  $('download').addEventListener('click', () => {
+    if (!resultBytes) return;
+
+    const url = URL.createObjectURL(
+      new Blob([resultBytes], { type: 'application/pdf' })
+    );
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'shipping-labels-with-order-codes.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  });
+
+  function clean(value) {
+    return (value || '').replace(/[^A-Z0-9]/gi, '');
+  }
+
+  function extractIdentifier(text) {
+    const flat = text.replace(/\s+/g, ' ').trim();
+
+    // Shopee: No. Pesanan
+    let m = flat.match(
+      /No\.?\s*Pesanan\s*[:：]?\s*([A-Z0-9]{8,})/i
+    );
+
+    if (m) {
+      return { value: clean(m[1]), kind: 'No. Pesanan' };
+    }
+
+    // Tokopedia-style labels: Order ID
+    m = flat.match(
+      /Order\s*ID\s*[:：]?\s*([0-9]{12,})/i
+    );
+
+    if (m) {
+      return { value: clean(m[1]), kind: 'Order ID' };
+    }
+
+    // Lazada / LEX:
+    // Sample order number: 2788760609163596
+    // Tracking number: LXAD-5124971924
+    // The tracking number must NOT be used as the order number.
+    if (/lazada|LXAD|LEXAD|LEX\b/i.test(flat)) {
+      m = flat.match(/\b([0-9]{16})\b/);
+
+      if (m) {
+        return {
+          value: m[1],
+          kind: 'Lazada 16-digit order number'
+        };
+      }
+    }
+
+    return null;
+  }
+
+  async function processFiles() {
+    const files = selectedFiles.filter(
+      f => f.type === 'application/pdf' ||
+           f.name.toLowerCase().endsWith('.pdf')
+    );
+
+    if (!files.length) {
+      status.textContent = 'Choose at least one PDF first.';
+      return;
+    }
+
+    if (!window.pdfjsLib || !window.PDFLib) {
+      status.textContent =
+        'PDF libraries could not load. Check your internet connection and reload.';
+      return;
+    }
+
+    $('process').disabled = true;
+    $('print').disabled = true;
+    $('download').disabled = true;
+    preview.innerHTML = '';
+    printArea.innerHTML = '';
+    resultBytes = null;
+    printReady = false;
+
+    try {
+      const combined = await PDFLib.PDFDocument.create();
+      const bold = await combined.embedFont(
+        PDFLib.StandardFonts.HelveticaBold
+      );
+
+      let matched = 0;
+      let total = 0;
+      let unmatched = 0;
+      const report = [];
+
+      for (const file of files) {
+        status.textContent = `Opening ${file.name}…`;
+
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const sourcePdf = await PDFLib.PDFDocument.load(bytes);
+        const sourcePages = sourcePdf.getPages();
+
+        const jsPdf = await pdfjsLib.getDocument({
+          data: bytes.slice()
+        }).promise;
+
+        const copiedPages = await combined.copyPages(
+          sourcePdf,
+          sourcePages.map((_, i) => i)
+        );
+
+        for (let i = 0; i < jsPdf.numPages; i++) {
+          total++;
+
+          status.textContent =
+            `Processing ${file.name}: page ${i + 1}/${jsPdf.numPages}…`;
+
+          const jsPage = await jsPdf.getPage(i + 1);
+          const content = await jsPage.getTextContent();
+          const text = content.items.map(x => x.str || '').join(' ');
+          const found = extractIdentifier(text);
+
+          const outputPage = copiedPages[i];
+          const { width, height } = outputPage.getSize();
+
+          // Render original page for preview/print.
+          const viewport = jsPage.getViewport({ scale: 2 });
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.ceil(viewport.width);
+          canvas.height = Math.ceil(viewport.height);
+
+          const ctx = canvas.getContext('2d', { alpha: false });
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          await jsPage.render({
+            canvasContext: ctx,
+            viewport
+          }).promise;
+
+          let code = '';
+
+          if (found && found.value.length >= 5) {
+            code = found.value.slice(-5);
+
+            // Add code to the actual downloadable PDF.
+            outputPage.drawText(code, {
+              x: Math.max(8, (width - 120) / 2),
+              y: 12,
+              size: 24,
+              font: bold,
+              color: PDFLib.rgb(0, 0, 0)
+            });
+
+            // Add code to print-preview rendering too.
+            ctx.save();
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(
+              canvas.width * 0.25,
+              canvas.height - 62,
+              canvas.width * 0.5,
+              54
+            );
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 48px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillText(code, canvas.width / 2, canvas.height - 20);
+            ctx.restore();
+
+            matched++;
+            report.push(
+              `OK — ${file.name}, page ${i + 1}: ${found.kind} → ${code}`
+            );
+          } else {
+            unmatched++;
+            report.push(
+              `CHECK — ${file.name}, page ${i + 1}: no supported order ID found`
+            );
+          }
+
+          // Preview thumbnail.
+          const thumb = document.createElement('div');
+          thumb.className = 'thumb';
+
+          const small = document.createElement('canvas');
+          small.width = 170;
+          small.height = Math.round(
+            170 * canvas.height / canvas.width
+          );
+
+          small.getContext('2d').drawImage(
+            canvas, 0, 0, small.width, small.height
+          );
+
+          thumb.appendChild(small);
+
+          const label = document.createElement('div');
+          label.textContent =
+            `${file.name} · page ${i + 1}: ${code || 'CHECK ID'}`;
+
+          thumb.appendChild(label);
+          preview.appendChild(thumb);
+
+          // Print page.
+          const printPage = document.createElement('div');
+          printPage.className = 'printpage';
+          printPage.style.width = '100vw';
+          printPage.style.height = `calc(100vw * ${height / width})`;
+
+          const printCanvas = document.createElement('canvas');
+          printCanvas.width = canvas.width;
+          printCanvas.height = canvas.height;
+          printCanvas.getContext('2d').drawImage(canvas, 0, 0);
+
+          printPage.appendChild(printCanvas);
+          printArea.appendChild(printPage);
+        }
+
+        await jsPdf.destroy();
+      }
+
+      resultBytes = await combined.save();
+      printReady = true;
+
+      $('print').disabled = false;
+      $('download').disabled = false;
+
+      status.textContent =
+        `Finished: ${files.length} PDF(s), ${total} pages, ` +
+        `${matched} codes added, ${unmatched} page(s) need checking.\n\n` +
+        report.join('\n') +
+        '\n\nReview the previews and report before printing.';
+
+      if ($('autoPrint').checked) {
+        setTimeout(() => {
+          if (printReady) window.print();
+        }, 500);
+      }
+
+    } catch (err) {
+      console.error(err);
+      status.textContent =
+        'Processing failed: ' + (err?.message || String(err)) +
+        '\nCheck that the PDFs are not password-protected and that you have internet access.';
+    } finally {
+      $('process').disabled = false;
+    }
+  }
 })();
 </script>
 </body>
