@@ -104,10 +104,16 @@ input[type=file]{display:none}
       /Order\s*ID\s*[:#]?\s*([A-Z0-9-]{5,})/i,
       /Order\s*Id\s*[:#]?\s*([A-Z0-9-]{5,})/i
     ];
+    
     for (const re of patterns) {
       const m = flat.match(re);
       if (m && m[1]) return m[1].replace(/[^A-Z0-9]/gi,'');
     }
+
+    // Lazada: detect standalone 16-digit order IDs
+    const lazadaOrderId = flat.match(/(?:^|\D)(\d{16})(?=\D|$)/);
+    if (lazadaOrderId && lazadaOrderId[1]) return lazadaOrderId[1];
+
     return null;
   }
 
@@ -149,23 +155,26 @@ input[type=file]{display:none}
 
         if (code && code.length >= 5) {
           const last5 = code.slice(-5);
+          
           page.drawText(last5, {
-            x: Math.max(8, (width - 120) / 2),
-            y: 12,
-            size: 24,
+            x: Math.max(2, (width - 120) / 2),
+            y: 2,
+            size: 18,
             font: await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold),
             color: PDFLib.rgb(0,0,0)
           });
-          // Mirror the overlay on the print canvas at the matching bottom margin.
+
+          // Place code at the very bottom of the print canvas
           ctx.save();
           ctx.fillStyle = '#fff';
-          ctx.fillRect(canvas.width * 0.25, canvas.height - 62, canvas.width * 0.5, 54);
+          ctx.fillRect(canvas.width * 0.35, canvas.height - 28, canvas.width * 0.3, 28);
           ctx.fillStyle = '#000';
-          ctx.font = 'bold 48px Arial, sans-serif';
+          ctx.font = 'bold 36px Arial, sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'alphabetic';
-          ctx.fillText(last5, canvas.width/2, canvas.height - 20);
+          ctx.fillText(last5, canvas.width / 2, canvas.height - 3);
           ctx.restore();
+
           matched++;
           report.push(`Page ${i+1}: ${last5}`);
         } else {
