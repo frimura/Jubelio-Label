@@ -136,27 +136,28 @@ input[type=file] { display: none; }
     });
   });
 
-  drop.addEventListener('drop', e => {
-    const files = [...e.dataTransfer.files].filter(
-      f => f.name.toLowerCase().endsWith('.pdf')
-    );
+ drop.addEventListener('drop', e => {
+  e.preventDefault();
+  drop.classList.remove('drag');
 
-    if (files.length) {
-      // Keep dropped files separately instead of assigning to input.files.
-      selectedFiles = files;
-      status.textContent =
-        `Selected ${files.length} PDF file(s). Click Process PDFs.`;
-    }
-  });
+  selectedFiles = [...e.dataTransfer.files].filter(
+    f => f.name.toLowerCase().endsWith('.pdf')
+  );
 
-  let selectedFiles = [];
+  if (selectedFiles.length) {
+    processFiles();
+  } else {
+    status.textContent = 'Please drop PDF files only.';
+  }
+});
 
-  input.addEventListener('change', () =>f {
-    selectedFiles = [...input.files];
-    status.textContent = selectedFiles.length
-      ? `Selected ${selectedFiles.length} PDF file(s).`
-      : 'Ready. Select one or more PDFs.';
-  });
+ let selectedFiles = [];
+let isProcessing = false;
+
+input.addEventListener('change', () => {
+  selectedFiles = [...input.files];
+  if (selectedFiles.length) processFiles();
+});
 
  input.addEventListener('change', processFiles);
 
@@ -235,6 +236,8 @@ drop.addEventListener('drop', e => {
   }
 
   async function processFiles() {
+    if (isProcessing) return;
+    
     const files = selectedFiles.filter(
       f => f.type === 'application/pdf' ||
            f.name.toLowerCase().endsWith('.pdf')
@@ -244,14 +247,14 @@ drop.addEventListener('drop', e => {
       status.textContent = 'Choose at least one PDF first.';
       return;
     }
-
+  isProcessing = true;
     if (!window.pdfjsLib || !window.PDFLib) {
       status.textContent =
         'PDF libraries could not load. Check your internet connection and reload.';
       return;
     }
 
-    $('process').disabled = true;
+    
     $('print').disabled = true;
     $('download').disabled = true;
     preview.innerHTML = '';
@@ -421,8 +424,8 @@ drop.addEventListener('drop', e => {
         'Processing failed: ' + (err?.message || String(err)) +
         '\nCheck that the PDFs are not password-protected and that you have internet access.';
     } finally {
-      $('process').disabled = false;
-    }
+  isProcessing = false;
+}
   }
 })();
 </script>
