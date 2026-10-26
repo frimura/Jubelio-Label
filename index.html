@@ -84,7 +84,6 @@ input[type=file] { display: none; }
   </div>
 
   <div class="controls">
-    <button id="process">Process PDFs</button>
     <button id="print" disabled>Print labels</button>
     <button id="download" disabled>Download combined PDF</button>
   </div>
@@ -152,14 +151,24 @@ input[type=file] { display: none; }
 
   let selectedFiles = [];
 
-  input.addEventListener('change', () => {
+  input.addEventListener('change', () =>f {
     selectedFiles = [...input.files];
     status.textContent = selectedFiles.length
       ? `Selected ${selectedFiles.length} PDF file(s).`
       : 'Ready. Select one or more PDFs.';
   });
 
-  $('process').addEventListener('click', processFiles);
+ input.addEventListener('change', processFiles);
+
+drop.addEventListener('drop', e => {
+  const files = [...(e.dataTransfer.files || [])]
+    .filter(f => f.name.toLowerCase().endsWith('.pdf'));
+
+  if (files.length) {
+    selectedFiles = files;
+    processFiles();
+  }
+});
 
   $('print').addEventListener('click', () => {
     if (printReady) window.print();
