@@ -38,10 +38,11 @@ input[type=file]{display:none}
   <h1>Jubelio Label Code Printer</h1>
   <p>Drop a shipping-label PDF here. The tool runs locally in your browser, finds an order identifier on each page, adds its final five characters at the bottom, then prepares a printable version.</p>
   <div id="drop" tabindex="0" role="button" aria-label="Choose or drop PDF">
-    <strong>Drop PDF here</strong><br><span>or click to choose a file</span>
-    <input id="file" type="file" accept="application/pdf">
+    <strong>Drop multiple PDFs here</strong><br><span>or click to choose multiple files</span>
+    <input id="file" type="file" accept="application/pdf" multiple>
   </div>
   <div class="controls">
+    <button id="process" disabled>Process PDFs</button>
     <button id="print" disabled>Print processed labels</button>
     <button id="download" disabled>Download processed PDF</button>
   </div>
@@ -58,12 +59,14 @@ input[type=file]{display:none}
   const fileInput = document.getElementById('file');
   const drop = document.getElementById('drop');
   const status = document.getElementById('status');
+  const processBtn = document.getElementById('process');
   const printBtn = document.getElementById('print');
   const downloadBtn = document.getElementById('download');
   const preview = document.getElementById('preview');
   const printArea = document.getElementById('printArea');
   let processedBytes = null;
   let printPages = [];
+  let selectedFiles = [];
 
   if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -72,7 +75,28 @@ input[type=file]{display:none}
 
   drop.addEventListener('click', () => fileInput.click());
   drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
-  fileInput.addEventListener('change', e => { if (e.target.files[0]) processFile(e.target.files[0]); });
+  fileInput.addEventListener('change', e => {
+    const incoming = Array.from(e.target.files || []).filter(f =>
+      f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf'
+    );
+    // Accumulate files from successive selections; ignore duplicate name/size pairs.
+    for (const f of incoming) {
+      if (!selectedFiles.some(existing => existing.name === f.name && existing.size === f.size)) {
+        selectedFiles.push(f);
+      }
+    }
+    fileInput.value = '';
+    processBtn.disabled = selectedFiles.length === 0;
+    processedBytes = null;
+    printBtn.disabled = true;
+    downloadBtn.disabled = true;
+    status.textContent = selectedFiles.length
+      ? `${selectedFiles.length} PDF(s) queued. Click Process PDFs to combine all selected files into one PDF.`
+      : 'Choose one or more PDF files.';
+  });
+  processBtn.addEventListener('click', () => {
+    if (selectedFiles.length) processFiles(selectedFiles);
+  });
   ['dragenter','dragover'].forEach(evt => drop.addEventListener(evt, e => {
     e.preventDefault(); drop.classList.add('drag');
   }));
@@ -80,8 +104,21 @@ input[type=file]{display:none}
     e.preventDefault(); drop.classList.remove('drag');
   }));
   drop.addEventListener('drop', e => {
-    const f = e.dataTransfer.files && e.dataTransfer.files[0];
-    if (f) processFile(f);
+    const files = Array.from(e.dataTransfer.files || []).filter(f =>
+      f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf'
+    );
+    if (files.length) {
+      for (const f of files) {
+        if (!selectedFiles.some(existing => existing.name === f.name && existing.size === f.size)) {
+          selectedFiles.push(f);
+        }
+      }
+      processBtn.disabled = false;
+      processedBytes = null;
+      printBtn.disabled = true;
+      downloadBtn.disabled = true;
+      status.textContent = `${selectedFiles.length} PDF(s) queued. Click Process PDFs to combine all selected files into one PDF.`;
+    }
   });
   printBtn.addEventListener('click', () => {
     if (!printPages.length) return;
@@ -91,8 +128,10 @@ input[type=file]{display:none}
     if (!processedBytes) return;
     const blob = new Blob([processedBytes], {type:'application/pdf'});
     const url = URL.createObjectURL(blob);
+    const d = new Date();
+    const dateName = `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
     const a = document.createElement('a');
-    a.href = url; a.download = 'jubelio-labels-with-order-codes.pdf';
+    a.href = url; a.download = `Shipping-Labels-${dateName}.pdf`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 30000);
   });
@@ -100,118 +139,124 @@ input[type=file]{display:none}
   function extractCandidate(text) {
     const flat = text.replace(/\s+/g, ' ').trim();
     const patterns = [
-      
-/No\.?\s*Pesanan\s*[:#]?\s*([A-Z0-9-]{5,})/i,
-
+      /No\.?\s*Pesanan\s*[:#]?\s*([A-Z0-9-]{5,})/i,
       /Order\s*ID\s*[:#]?\s*([A-Z0-9-]{5,})/i,
       /Order\s*Id\s*[:#]?\s*([A-Z0-9-]{5,})/i
     ];
-    
     for (const re of patterns) {
       const m = flat.match(re);
       if (m && m[1]) return m[1].replace(/[^A-Z0-9]/gi,'');
     }
 
-    // Lazada: detect standalone 16-digit order IDs
+    // Lazada labels may show the order ID as a standalone 16-digit number.
     const lazadaOrderId = flat.match(/(?:^|\D)(\d{16})(?=\D|$)/);
     if (lazadaOrderId && lazadaOrderId[1]) return lazadaOrderId[1];
 
     return null;
   }
 
-  async function processFile(file) {
+  async function processFiles(files) {
+    if (!files || !files.length) { status.textContent = 'Choose one or more PDF files first.'; return; }
     processedBytes = null; printPages = [];
+    processBtn.disabled = true;
     printBtn.disabled = true; downloadBtn.disabled = true;
     preview.innerHTML = ''; printArea.innerHTML = '';
-    if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
-      status.textContent = 'Please choose a PDF file.'; return;
-    }
     if (!window.pdfjsLib || !window.PDFLib) {
-      status.textContent = 'Could not load the PDF libraries. Check your internet connection and reload this page.'; return;
+      status.textContent = 'Could not load the PDF libraries. Check your internet connection and reload this page.';
+      processBtn.disabled = false; return;
     }
-    status.textContent = 'Loading PDF…';
+
     try {
-      const sourceBytes = new Uint8Array(await file.arrayBuffer());
-      const pdfDoc = await PDFLib.PDFDocument.load(sourceBytes, {ignoreEncryption:false});
-      const pdfjsDoc = await pdfjsLib.getDocument({data: sourceBytes.slice()}).promise;
-      const pages = pdfDoc.getPages();
-      let matched = 0, unmatched = [];
-      const report = [];
-      for (let i = 0; i < pdfjsDoc.numPages; i++) {
-        status.textContent = `Processing page ${i+1} of ${pdfjsDoc.numPages}…`;
-        const pdfjsPage = await pdfjsDoc.getPage(i+1);
-        const content = await pdfjsPage.getTextContent();
-        const text = content.items.map(x => x.str || '').join(' ');
-        const code = extractCandidate(text);
-        const page = pages[i];
-        const {width, height} = page.getSize();
+      const combinedDoc = await PDFLib.PDFDocument.create();
+      let totalPages = 0, matched = 0;
+      const unmatched = [], report = [];
 
-        // Render page as a high-resolution canvas for a print preview that preserves the original page.
-        const scale = 2;
-        const viewport = pdfjsPage.getViewport({scale});
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
-        const ctx = canvas.getContext('2d', {alpha:false});
-        ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
-        await pdfjsPage.render({canvasContext:ctx, viewport}).promise;
+      for (const file of files) {
+        status.textContent = `Loading ${file.name}…`;
+        const sourceBytes = new Uint8Array(await file.arrayBuffer());
+        const pdfDoc = await PDFLib.PDFDocument.load(sourceBytes, {ignoreEncryption:false});
+        const pdfjsDoc = await pdfjsLib.getDocument({data: sourceBytes.slice()}).promise;
+        const pages = pdfDoc.getPages();
 
-        if (code && code.length >= 5) {
-          const last5 = code.slice(-5);
-          
-          page.drawText(last5, {
-            x: Math.max(2, (width - 120) / 2),
-            y: 0.5,
-            size: 18,
-            font: await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold),
-            color: PDFLib.rgb(0,0,0)
-          });
+        for (let i = 0; i < pdfjsDoc.numPages; i++) {
+          totalPages++;
+          status.textContent = `Processing ${file.name}: page ${i+1} of ${pdfjsDoc.numPages}…`;
+          const pdfjsPage = await pdfjsDoc.getPage(i+1);
+          const content = await pdfjsPage.getTextContent();
+          const text = content.items.map(x => x.str || '').join(' ');
+          const code = extractCandidate(text);
+          const page = pages[i];
+          const {width, height} = page.getSize();
 
-          // Place code at the very bottom of the print canvas
-          ctx.save();
-          ctx.fillStyle = '#fff';
-          ctx.fillRect(canvas.width * 0.35, canvas.height - 18, canvas.width * 0.3, 18);
-          ctx.fillStyle = '#000';
-          ctx.font = 'bold 36px Arial, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'alphabetic';
-          ctx.fillText(last5, canvas.width / 2, canvas.height - 1);
-          ctx.restore();
+          const viewport = pdfjsPage.getViewport({scale:2});
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
+          const ctx = canvas.getContext('2d', {alpha:false});
+          ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+          await pdfjsPage.render({canvasContext:ctx, viewport}).promise;
 
-          matched++;
-          report.push(`Page ${i+1}: ${last5}`);
-        } else {
-          unmatched.push(i+1);
-          report.push(`Page ${i+1}: no identifier found; left unchanged`);
+          if (code && code.length >= 5) {
+            const last5 = code.slice(-5);
+            page.drawText(last5, {
+              x: Math.max(2, (width - 120) / 2),
+              y: 0.5,
+              size: 18,
+              font: await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold),
+              color: PDFLib.rgb(0,0,0)
+            });
+            ctx.save();
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(canvas.width * 0.35, canvas.height - 18, canvas.width * 0.3, 18);
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 36px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillText(last5, canvas.width/2, canvas.height - 1);
+            ctx.restore();
+            matched++;
+            report.push(`${file.name} — page ${i+1}: ${last5}`);
+          } else {
+            unmatched.push(`${file.name} — page ${i+1}`);
+            report.push(`${file.name} — page ${i+1}: no identifier found; left unchanged`);
+          }
+
+          const thumb = document.createElement('div'); thumb.className = 'thumb';
+          const small = document.createElement('canvas');
+          small.width = 180; small.height = Math.round(180 * canvas.height / canvas.width);
+          small.getContext('2d').drawImage(canvas,0,0,small.width,small.height);
+          thumb.appendChild(small);
+          const label = document.createElement('div');
+          label.textContent = `${file.name} — page ${i+1}: ${code ? code.slice(-5) : 'not found'}`;
+          thumb.appendChild(label); preview.appendChild(thumb);
+
+          const printPage = document.createElement('div'); printPage.className = 'printpage';
+          printPage.style.aspectRatio = `${width} / ${height}`;
+          printPage.style.width = '100vw';
+          printPage.style.height = `calc(100vw * ${height/width})`;
+          const printCanvas = document.createElement('canvas');
+          printCanvas.width = canvas.width; printCanvas.height = canvas.height;
+          printCanvas.getContext('2d').drawImage(canvas,0,0);
+          printPage.appendChild(printCanvas); printArea.appendChild(printPage);
         }
-        printPages.push({canvas, width, height, pageNumber:i+1});
-        const thumb = document.createElement('div'); thumb.className = 'thumb';
-        const small = document.createElement('canvas');
-        small.width = 180; small.height = Math.round(180 * canvas.height / canvas.width);
-        small.getContext('2d').drawImage(canvas,0,0,small.width,small.height);
-        thumb.appendChild(small);
-        const label = document.createElement('div');
-        label.textContent = `Page ${i+1}: ${code ? code.slice(-5) : 'not found'}`;
-        thumb.appendChild(label); preview.appendChild(thumb);
-        const printPage = document.createElement('div'); printPage.className = 'printpage';
-        printPage.style.aspectRatio = `${width} / ${height}`;
-        printPage.style.width = '100vw';
-        printPage.style.height = `calc(100vw * ${height/width})`;
-        const printCanvas = document.createElement('canvas');
-        printCanvas.width = canvas.width; printCanvas.height = canvas.height;
-        printCanvas.getContext('2d').drawImage(canvas,0,0);
-        printPage.appendChild(printCanvas); printArea.appendChild(printPage);
+
+        const stampedBytes = await pdfDoc.save();
+        const stampedDoc = await PDFLib.PDFDocument.load(stampedBytes);
+        const copiedPages = await combinedDoc.copyPages(stampedDoc, stampedDoc.getPageIndices());
+        copiedPages.forEach(p => combinedDoc.addPage(p));
+        await pdfjsDoc.destroy();
       }
-      processedBytes = await pdfDoc.save();
+
+      processedBytes = await combinedDoc.save();
       printBtn.disabled = false; downloadBtn.disabled = false;
-      status.textContent = `Finished: ${pdfjsDoc.numPages} pages total, ${matched} codes added, ${unmatched.length} page(s) without a recognized identifier.\n\n${report.join('\n')}\n\nOpening the print dialog. You can cancel to review the preview or download the modified PDF.`;
-      await pdfjsDoc.destroy();
-      // Automatically open the print dialog after compilation; the Print button remains available.
+      status.textContent = `Finished: ${files.length} PDF(s) combined into one file; ${totalPages} pages total, ${matched} codes added, ${unmatched.length} page(s) without a recognized identifier.\\n\\n${report.join('\\n')}\\n\\nOpening the print dialog. You can cancel to review the preview or download the combined PDF.`;
       setTimeout(() => { try { window.print(); } catch (_) {} }, 400);
     } catch (err) {
       console.error(err);
-      status.textContent = 'Could not process this PDF: ' + (err && err.message ? err.message : String(err)) +
-        '\nIf the PDF is password-protected or uses unusual text encoding, this version may not support it.';
+      status.textContent = 'Could not process the selected PDFs: ' + (err && err.message ? err.message : String(err)) +
+        '\nIf a PDF is password-protected or uses unusual text encoding, this version may not support it.';
       printBtn.disabled = true; downloadBtn.disabled = true;
+    } finally {
+      processBtn.disabled = selectedFiles.length === 0;
     }
   }
 })();
