@@ -401,6 +401,8 @@ function formatFileSize(bytes) {
 printBtn.disabled = false;
 downloadBtn.disabled = false;
 
+status.textContent = `Finished: ${files.length} PDF(s) combined into one file; ${totalPages} pages total, ${matched} codes added, ${unmatched.length} page(s) without a recognized identifier.\n\n${report.join('\n')}`;
+      // Automatically open the processed PDF
 const blob = new Blob([processedBytes], {
   type: 'application/pdf'
 });
@@ -410,11 +412,8 @@ const pdfTab = window.open(pdfUrl, '_blank');
 
 if (!pdfTab) {
   status.textContent +=
-    '\nPop-up blocked. Click Print processed labels to open the PDF.';
+    '\nPop-up blocked. Allow pop-ups for this page and process again.';
 }
-
-status.textContent = `Finished: ${files.length} PDF(s) combined into one file; ${totalPages} pages total, ${matched} codes added, ${unmatched.length} page(s) without a recognized identifier.\n\n${report.join('\n')}`;
-      
     } catch (err) {
       console.error(err);
       status.textContent = 'Could not process the selected PDFs: ' + (err && err.message ? err.message : String(err)) +
