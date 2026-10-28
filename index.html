@@ -305,7 +305,9 @@ function formatFileSize(bytes) {
   async function processFiles(files) {
     if (!files || !files.length) { status.textContent = 'Choose one or more PDF files first.'; return; }
     processedBytes = null; printPages = [];
-   const printTab = window.open('about:blank', '_blank');
+   const printTab = window.open('about:blank', '_blank', 'noopener=false');
+if (printTab) window.focus();
+   
     processBtn.disabled = true;
     printBtn.disabled = true; downloadBtn.disabled = true;
     preview.innerHTML = ''; printArea.innerHTML = '';
