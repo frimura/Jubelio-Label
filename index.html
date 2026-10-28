@@ -265,9 +265,12 @@ function formatFileSize(bytes) {
   addFiles(files);
 });
   printBtn.addEventListener('click', () => {
-    if (!printPages.length) return;
-    window.print();
-  });
+  if (!processedBytes) return;
+
+  const blob = new Blob([processedBytes], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+});
   downloadBtn.addEventListener('click', () => {
     if (!processedBytes) return;
     const blob = new Blob([processedBytes], {type:'application/pdf'});
@@ -302,6 +305,7 @@ function formatFileSize(bytes) {
   async function processFiles(files) {
     if (!files || !files.length) { status.textContent = 'Choose one or more PDF files first.'; return; }
     processedBytes = null; printPages = [];
+   const printTab = window.open('about:blank', '_blank');
     processBtn.disabled = true;
     printBtn.disabled = true; downloadBtn.disabled = true;
     preview.innerHTML = ''; printArea.innerHTML = '';
@@ -391,8 +395,17 @@ function formatFileSize(bytes) {
       }
 
       processedBytes = await combinedDoc.save();
-      printBtn.disabled = false; downloadBtn.disabled = false;
-      status.textContent = `Finished: ${files.length} PDF(s) combined into one file; ${totalPages} pages total, ${matched} codes added, ${unmatched.length} page(s) without a recognized identifier.\\n\\n${report.join('\\n')}\\n\\nOpening the print dialog. You can cancel to review the preview or download the combined PDF.`;
+printBtn.disabled = false;
+downloadBtn.disabled = false;
+
+if (printTab && !printTab.closed) {
+  const blob = new Blob([processedBytes], { type: 'application/pdf' });
+  printTab.location.href = URL.createObjectURL(blob);
+} else {
+  status.textContent += '\nPop-up blocked. Click Print processed labels to open the PDF.';
+}
+
+status.textContent = `Finished: ${files.length} PDF(s) combined into one file; ${totalPages} pages total, ${matched} codes added, ${unmatched.length} page(s) without a recognized identifier.\n\n${report.join('\n')}`;
       
     } catch (err) {
       console.error(err);
