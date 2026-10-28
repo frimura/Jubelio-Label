@@ -397,11 +397,7 @@ if (printTab) window.focus();
       }
 
       processedBytes = await combinedDoc.save();
-     if (printTab && !printTab.closed) {
-  const blob = new Blob([processedBytes], { type: 'application/pdf' });
-  const url = URL.createObjectURL(blob);
-  printTab.location.href = url;
-}
+     
 printBtn.disabled = false;
 downloadBtn.disabled = false;
 
