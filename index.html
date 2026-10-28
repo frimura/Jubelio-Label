@@ -393,7 +393,7 @@ function formatFileSize(bytes) {
       processedBytes = await combinedDoc.save();
       printBtn.disabled = false; downloadBtn.disabled = false;
       status.textContent = `Finished: ${files.length} PDF(s) combined into one file; ${totalPages} pages total, ${matched} codes added, ${unmatched.length} page(s) without a recognized identifier.\\n\\n${report.join('\\n')}\\n\\nOpening the print dialog. You can cancel to review the preview or download the combined PDF.`;
-      setTimeout(() => { try { window.print(); } catch (_) {} }, 400);
+      
     } catch (err) {
       console.error(err);
       status.textContent = 'Could not process the selected PDFs: ' + (err && err.message ? err.message : String(err)) +
