@@ -30,6 +30,52 @@ input[type=file]{display:none}
  .printpage canvas{display:block;width:100%;height:100%;object-fit:contain}
  @page{margin:0}
 }
+ .file-list {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #dce2e8;
+  border-radius: 8px;
+  background: #fff;
+  overflow-wrap: anywhere;
+}
+
+.file-info {
+  min-width: 0;
+  font-size: 13px;
+}
+
+.file-name {
+  font-weight: 600;
+  color: #17202a;
+}
+
+.file-size {
+  color: #687582;
+  margin-top: 3px;
+}
+
+.file-remove {
+  flex-shrink: 0;
+  background: #c0392b;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.file-duplicate {
+  color: #c0392b;
+  font-size: 12px;
+  margin-top: 3px;
+}
 #printArea{display:none}
 </style>
 </head>
@@ -42,6 +88,8 @@ input[type=file]{display:none}
     <input id="file" type="file" accept="application/pdf" multiple>
   </div>
   <div class="controls">
+   <div id="fileList" class="file-list"></div>
+   
     <button id="process" disabled>Process PDFs</button>
     <button id="print" disabled>Print processed labels</button>
     <button id="download" disabled>Download processed PDF</button>
@@ -63,11 +111,124 @@ input[type=file]{display:none}
   const printBtn = document.getElementById('print');
   const downloadBtn = document.getElementById('download');
   const preview = document.getElementById('preview');
+ const fileList = document.getElementById('fileList');
   const printArea = document.getElementById('printArea');
   let processedBytes = null;
   let printPages = [];
   let selectedFiles = [];
 
+ function addFiles(incoming) {
+  const added = [];
+  const duplicates = [];
+
+  for (const file of incoming) {
+    if (
+      !file.name.toLowerCase().endsWith('.pdf') &&
+      file.type !== 'application/pdf'
+    ) {
+      continue;
+    }
+
+    const duplicate = selectedFiles.some(
+      existing => existing.name.toLowerCase() === file.name.toLowerCase()
+    );
+
+    if (duplicate) {
+      duplicates.push(file.name);
+    } else {
+      selectedFiles.push(file);
+      added.push(file.name);
+    }
+  }
+
+  renderFileList();
+
+  processedBytes = null;
+  printPages = [];
+  printBtn.disabled = true;
+  downloadBtn.disabled = true;
+
+  processBtn.disabled = selectedFiles.length === 0;
+
+  let message = `${selectedFiles.length} PDF(s) queued.`;
+
+  if (added.length) {
+    message += `\nAdded: ${added.length} file(s).`;
+  }
+
+  if (duplicates.length) {
+    message += `\nSkipped duplicate filename(s):\n${duplicates.join('\n')}`;
+  }
+
+  if (!selectedFiles.length) {
+    message = 'Choose one or more PDF files.';
+  } else {
+    message += '\nClick Process PDFs to combine all selected files.';
+  }
+
+  status.textContent = message;
+}
+
+function renderFileList() {
+  fileList.innerHTML = '';
+
+  if (!selectedFiles.length) {
+    fileList.textContent = 'No files added yet.';
+    return;
+  }
+
+  selectedFiles.forEach((file, index) => {
+    const item = document.createElement('div');
+    item.className = 'file-item';
+
+    const info = document.createElement('div');
+    info.className = 'file-info';
+
+    const name = document.createElement('div');
+    name.className = 'file-name';
+    name.textContent = file.name;
+
+    const size = document.createElement('div');
+    size.className = 'file-size';
+    size.textContent = formatFileSize(file.size);
+
+    info.append(name, size);
+
+    const remove = document.createElement('button');
+    remove.className = 'file-remove';
+    remove.textContent = 'Remove';
+    remove.type = 'button';
+
+    remove.addEventListener('click', () => {
+      selectedFiles.splice(index, 1);
+
+      processedBytes = null;
+      printPages = [];
+      printArea.innerHTML = '';
+      preview.innerHTML = '';
+
+      printBtn.disabled = true;
+      downloadBtn.disabled = true;
+      processBtn.disabled = selectedFiles.length === 0;
+
+      renderFileList();
+
+      status.textContent = selectedFiles.length
+        ? `${selectedFiles.length} PDF(s) queued. Click Process PDFs to continue.`
+        : 'No files queued. Choose one or more PDF files.';
+    });
+
+    item.append(info, remove);
+    fileList.appendChild(item);
+  });
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+ 
   if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc =
       'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -76,24 +237,9 @@ input[type=file]{display:none}
   drop.addEventListener('click', () => fileInput.click());
   drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
   fileInput.addEventListener('change', e => {
-    const incoming = Array.from(e.target.files || []).filter(f =>
-      f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf'
-    );
-    // Accumulate files from successive selections; ignore duplicate name/size pairs.
-    for (const f of incoming) {
-      if (!selectedFiles.some(existing => existing.name === f.name && existing.size === f.size)) {
-        selectedFiles.push(f);
-      }
-    }
-    fileInput.value = '';
-    processBtn.disabled = selectedFiles.length === 0;
-    processedBytes = null;
-    printBtn.disabled = true;
-    downloadBtn.disabled = true;
-    status.textContent = selectedFiles.length
-      ? `${selectedFiles.length} PDF(s) queued. Click Process PDFs to combine all selected files into one PDF.`
-      : 'Choose one or more PDF files.';
-  });
+  addFiles(Array.from(e.target.files || []));
+  fileInput.value = '';
+});
   processBtn.addEventListener('click', () => {
     if (selectedFiles.length) processFiles(selectedFiles);
   });
@@ -104,22 +250,9 @@ input[type=file]{display:none}
     e.preventDefault(); drop.classList.remove('drag');
   }));
   drop.addEventListener('drop', e => {
-    const files = Array.from(e.dataTransfer.files || []).filter(f =>
-      f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf'
-    );
-    if (files.length) {
-      for (const f of files) {
-        if (!selectedFiles.some(existing => existing.name === f.name && existing.size === f.size)) {
-          selectedFiles.push(f);
-        }
-      }
-      processBtn.disabled = false;
-      processedBytes = null;
-      printBtn.disabled = true;
-      downloadBtn.disabled = true;
-      status.textContent = `${selectedFiles.length} PDF(s) queued. Click Process PDFs to combine all selected files into one PDF.`;
-    }
-  });
+  const files = Array.from(e.dataTransfer.files || []);
+  addFiles(files);
+});
   printBtn.addEventListener('click', () => {
     if (!printPages.length) return;
     window.print();
