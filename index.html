@@ -32,11 +32,22 @@ input[type=file]{display:none}
 }
  .file-list {
   margin-top: 14px;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 8px;
+  align-items: start;
+}
+ .controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
 }
 
+.controls button {
+  flex: 0 0 auto;
+}
 .file-item {
   display: flex;
   align-items: center;
@@ -88,12 +99,12 @@ input[type=file]{display:none}
     <input id="file" type="file" accept="application/pdf" multiple>
   </div>
   <div class="controls">
-   <div id="fileList" class="file-list"></div>
-   
-    <button id="process" disabled>Process PDFs</button>
-    <button id="print" disabled>Print processed labels</button>
-    <button id="download" disabled>Download processed PDF</button>
-  </div>
+  <button id="process" disabled>Process PDFs</button>
+  <button id="print" disabled>Print processed labels</button>
+  <button id="download" disabled>Download processed PDF</button>
+</div>
+
+<div id="fileList" class="file-list"></div>
   <div id="status">Ready. Choose a PDF to begin.</div>
   <p class="note">Privacy: processing is performed in this browser tab. The page loads PDF libraries from public CDNs, but the PDF itself is not uploaded anywhere. Internet access is required to load those libraries.</p>
   <p class="note">Check the preview and a test print before printing a full batch. If a page has no recognizable identifier, it is left unchanged and reported.</p>
