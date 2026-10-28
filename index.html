@@ -305,8 +305,20 @@ function formatFileSize(bytes) {
   async function processFiles(files) {
     if (!files || !files.length) { status.textContent = 'Choose one or more PDF files first.'; return; }
     processedBytes = null; printPages = [];
-   const printTab = window.open('about:blank', '_blank', 'noopener=false');
-if (printTab) window.focus();
+   const printTab = window.open('about:blank', '_blank');
+
+if (printTab) {
+  printTab.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head><title>Processing PDF...</title></head>
+      <body style="font-family: sans-serif; padding: 24px">
+        Processing PDF... Please wait.
+      </body>
+    </html>
+  `);
+  printTab.document.close();
+}
    
     processBtn.disabled = true;
     printBtn.disabled = true; downloadBtn.disabled = true;
@@ -402,10 +414,15 @@ printBtn.disabled = false;
 downloadBtn.disabled = false;
 
 if (printTab && !printTab.closed) {
-  const blob = new Blob([processedBytes], { type: 'application/pdf' });
-  printTab.location.href = URL.createObjectURL(blob);
+  const blob = new Blob([processedBytes], {
+    type: 'application/pdf'
+  });
+
+  const pdfUrl = URL.createObjectURL(blob);
+  printTab.location.replace(pdfUrl);
 } else {
-  status.textContent += '\nPop-up blocked. Click Print processed labels to open the PDF.';
+  status.textContent +=
+    '\nPop-up blocked. Allow pop-ups and try again.';
 }
 
 status.textContent = `Finished: ${files.length} PDF(s) combined into one file; ${totalPages} pages total, ${matched} codes added, ${unmatched.length} page(s) without a recognized identifier.\n\n${report.join('\n')}`;
